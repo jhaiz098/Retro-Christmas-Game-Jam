@@ -3,7 +3,10 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     [SerializeField] private float speed;
-    private IInteractable focus;
+    [SerializeField] private float detectRange;
+    [SerializeField] private LayerMask detectionMask;
+    private IInteractable focusedInteractable;
+    private GameObject focusedObject;
     private Vector2 movementInput;
     private Rigidbody2D rb;
     void Start()
@@ -16,20 +19,53 @@ public class Player : MonoBehaviour
         movementInput = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")).normalized;
 
         rb.linearVelocity = new Vector2(movementInput.x * speed, movementInput.y * speed);
-    }
 
-    private void OnCollisionStay2D(Collision2D collision)
-    {
-        IInteractable interactable = collision.gameObject.GetComponent<IInteractable>();
+        Collider2D[] detector = Physics2D.OverlapCircleAll (transform.position, detectRange, detectionMask);
 
-        if (interactable != null)
+        if (detector != null)
         {
-            focus = interactable;
+            Collider2D closestCollider = null;
+            float closestDistance = Mathf.Infinity;
 
-            if (Input.GetKeyDown(KeyCode.E))
+            foreach(Collider2D col in detector)
             {
-                focus.Interact();
+                float distance = Vector2.Distance(transform.position, col.transform.position);
+
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestCollider = col;
+                }
+            }
+
+            if (closestCollider != null)
+            {
+                focusedObject = closestCollider.gameObject;
+                focusedInteractable = closestCollider.GetComponent<IInteractable>();
+            }
+            else
+            {
+                focusedObject = null;
             }
         }
+        else
+        {
+            focusedObject = null;
+        }
+
+        if (focusedObject != null)
+        {
+            Debug.DrawLine(transform.position, focusedObject.transform.position);
+            if (Input.GetKeyDown(KeyCode.E))
+            {
+                focusedInteractable.Interact();
+            }
+        }
+
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.DrawWireSphere(transform.position, detectRange);
     }
 }
